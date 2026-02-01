@@ -769,7 +769,13 @@ async def init_ticket(uid: int, bot: Bot, category: str):
 
 
 # --- 8. КОПИРОВАНИЕ СООБЩЕНИЙ ---
-async def safe_set_reaction(bot: Bot, chat_id: int, message_id: int, emoji: str):
+async def safe_set_reaction(
+    bot: Bot, 
+    chat_id: int, 
+    message_id: int, 
+    emoji: str
+) -> bool:
+    """Безопасно установить реакцию на сообщение"""
     try:
         supported_emojis = ["👍", "👎", "❤", "🔥", "🥰", "👏", "😁", "🤔", "🤯", "😱",
                             "🤬", "😢", "🎉", "🤩", "🤮", "💩", "🙏", "👌", "🕊", "🤡",
@@ -780,8 +786,14 @@ async def safe_set_reaction(bot: Bot, chat_id: int, message_id: int, emoji: str)
                             "🆒", "💘", "🙉", "🦄", "😘", "💊", "🙊", "😎", "👾", "🤷‍♂",
                             "🤷", "🤷‍♀", "😡"]
 
+        # Улучшенная логика замены emoji
         if emoji not in supported_emojis:
-            emoji = "👍" if emoji in ["✅", "📨", "👤"] else "👎" if emoji in ["❌", "🚫"] else "👍"
+            if emoji in ["✅", "📨", "👤"]:
+                emoji = "👍"
+            elif emoji in ["❌", "🚫"]:
+                emoji = "👎"
+            else:
+                emoji = "👍"
 
         await bot.set_message_reaction(
             chat_id=chat_id,
@@ -789,14 +801,17 @@ async def safe_set_reaction(bot: Bot, chat_id: int, message_id: int, emoji: str)
             reaction=[ReactionTypeEmoji(emoji=emoji)]
         )
         return True
+        
     except TelegramBadRequest as e:
-        if "REACTION_INVALID" in str(e):
+        error_msg = str(e)
+        if "REACTION_INVALID" in error_msg:
             logger.warning(f"Invalid reaction emoji: {emoji}")
-        elif "message to set reaction not found" in str(e):
+        elif "message to set reaction not found" in error_msg:
             logger.warning(f"Message not found for reaction: {chat_id}/{message_id}")
         else:
             logger.error(f"BadRequest setting reaction: {e}")
-          return False
+        return False
+        
     except Exception as e:
         logger.error(f"Error setting reaction: {e}")
         return False
